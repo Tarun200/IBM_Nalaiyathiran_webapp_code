@@ -2,6 +2,8 @@ from flask import Flask,render_template,request,redirect
 import numpy as np
 from tensorflow import keras
 from keras.models import load_model
+import joblib
+import scipy
 
 
 app = Flask(__name__)
@@ -17,33 +19,26 @@ def predict():
     if request.method == "POST":
         string = request.form['val']
         string = string.split(',')
-        temp_input = [eval(i) for i in string]
+        x_input = [eval(i) for i in string]
         
-        x_input = np.zeros(shape=(1, 10))
-        x_input.shape
+
+        sc = joblib.load("scaler.save") 
+
+        x_input = sc.fit_transform(np.array(x_input).reshape(-1,1))
+
+        x_input = np.array(x_input).reshape(1,-1)
+
+        x_input = x_input.reshape(1,-1)
+        x_input = x_input.reshape((1,10,1))
+        print(x_input.shape)
+
+        model = load_model('crude_oil.h5')
+        output = model.predict(x_input)
+        print(output[0][0])
+
+        val = sc.inverse_transform(output)
         
-        lst_output = []
-        n_steps = 10
-        i=0
-        while(i<10):
-            if(len(temp_input)>10):
-                x_input = np.array(temp_input[1:])
-                x_input = x_input.reshape(1,-1)
-                x_input = x_input.reshape((1,n_steps, 1))
-                yhat = model.predict(x_input, verbose = 0)
-                temp_input.extend(yhat[0].tolist())
-                temp_input = temp_input[1:]
-                lst_output.extend(yhat.tolist())
-                i=i+1
-        
-            else:
-                x_input = x_input.reshape((1, n_steps,1))
-                yhat = model.predict(x_input, verbose = 0)
-                temp_input.extend(yhat[0].tolist())
-                lst_output.extend(yhat.tolist())
-                i=i+1
-        val = lst_output[9]
-        return render_template('index.html' , prediction = val)
+        return render_template('index.html' , prediction = val[0][0])
     if request.method=="GET":
         return render_template('index.html')
 
